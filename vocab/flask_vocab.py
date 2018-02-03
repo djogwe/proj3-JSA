@@ -34,7 +34,6 @@ WORDS = Vocab(CONFIG.VOCAB)
 # Pages
 ###
 
-
 @app.route("/")
 @app.route("/index")
 def index():
@@ -51,7 +50,7 @@ def index():
     app.logger.debug("At least one seems to be set correctly")
     return flask.render_template('vocab.html')
 
-
+'''
 @app.route("/keep_going")
 def keep_going():
     """
@@ -60,11 +59,12 @@ def keep_going():
     """
     flask.g.vocab = WORDS.as_list()
     return flask.render_template('vocab.html')
-
+'''
 
 @app.route("/success")
 def success():
     return flask.render_template('success.html')
+
 
 #######################
 # Form handler.
@@ -73,8 +73,7 @@ def success():
 #   a JSON request handler
 #######################
 
-
-@app.route("/_check", methods=["POST"])
+@app.route("/_check")
 def check():
     """
     User has submitted the form with a word ('attempt')
@@ -87,13 +86,15 @@ def check():
     app.logger.debug("Entering check")
 
     # The data we need, from form and from cookie
-    text = flask.request.form["attempt"]
+    text = flask.request.args.get("text", type=str)
     jumble = flask.session["jumble"]
     matches = flask.session.get("matches", [])  # Default to empty list
 
     # Is it good?
     in_jumble = LetterBag(jumble).contains(text)
     matched = WORDS.has(text)
+    msg = text
+    finished = False
 
     # Respond appropriately
     if matched and in_jumble and not (text in matches):
@@ -101,21 +102,24 @@ def check():
         matches.append(text)
         flask.session["matches"] = matches
     elif text in matches:
-        flask.flash("You already found {}".format(text))
+        msg = "You already found {}".format(text)
     elif not matched:
-        flask.flash("{} isn't in the list of words".format(text))
+        msg = "{} isn't in the list of words".format(text)
     elif not in_jumble:
-        flask.flash(
-            '"{}" can\'t be made from the letters {}'.format(text, jumble))
+        msg = '"{}" can\'t be made from the letters {}'.format(text, jumble)
     else:
         app.logger.debug("This case shouldn't happen!")
         assert False  # Raises AssertionError
-
+    
     # Choose page:  Solved enough, or keep going?
     if len(matches) >= flask.session["target_count"]:
-       return flask.redirect(flask.url_for("success"))
+        finished = True
+        msg = "Finished!"
+        rslt = {"matches": matched, "message": msg, "matches_list": matches, "isfinished": finished}
+        return flask.jsonify(result=rslt)
     else:
-       return flask.redirect(flask.url_for("keep_going"))
+        rslt = {"matches": matched, "message": msg, "matches_list": matches, "isfinished": finished}
+        return flask.jsonify(result=rslt)
 
 ###############
 # AJAX request handlers

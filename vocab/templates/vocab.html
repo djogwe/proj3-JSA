@@ -80,36 +80,50 @@
 <br />
 <div class="row">
   <div class="col-xs-6 text-center">
-  <form id="entry" method="POST" action="/_check">
+  <form id="entry">
     <label for="attempt">Word:</label>
     <input id="attempt" name="attempt" type="text" width="15"
       autocomplete="off"  autofocus />
-    <input type="submit" name="try" />
   </form>
 </div></div>
 
 <br />
 
-{% if session.matches|length is not equalto 0  %}
-<h2>You found </h2>
-<p id="results">
-  {% for match in session.matches %}
-  {{ match }} 
-  {% endfor %}
-</p>
-{% endif %}
-
-
-{% with messages = get_flashed_messages() %}
-  {% if messages %}
-    <!-- Mismatch, already found, etc. "flashed" from Python -->
-    {% for message in messages %}
-      <p class="message">{{ message }}</p>
-    {% endfor %}
-  {% endif %}
-{% endwith %}
-
-
+<p><label id="msg" class="message"></label></p>
+<p><label id="matchlist" class="message"></label></p>
 
  </div> <!-- container -->
+
+ <script>
+
+$("#attempt").keyup(function(event) {
+   var txt = $("#attempt").val();  // Current content of the input field
+   var keycode = event.which;      // They key that just went up
+   var letter = String.fromCharCode(keycode);
+
+   if (! "ABCDEFGHIJKLMNOPQRSTUVWXYZ".includes(letter)) { return }
+
+   $.getJSON( "/_check", { text: txt }, 
+              function(data) {
+                var found_match = data.result.matches;
+                var display_message = data.result.message;
+                var matcheslist = data.result.matches_list;
+                var isfinished = data.result.isfinished;
+
+                if (found_match) {
+                   $("#msg").html(display_message);
+                   $("#matchlist").html("Matches Found: " + matcheslist);
+                   $("#attempt").val("");
+                } else {
+                   $("#msg").html(display_message); 
+                }
+
+                if (isfinished) {
+                    window.location.replace("/success");
+                }
+               }
+           );
+   });
+
+</script>
 </body> </html>
